@@ -4,6 +4,8 @@
  * Description: White-label floating chat widget with RAG, multi-provider LLM support, and configurable contact form.
  * Version: 2.0.0
  * Author: Justus August
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: askwp
  */
 
@@ -130,6 +132,7 @@ require_once ASKWP_PLUGIN_DIR . 'includes/llm-provider.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/llm-openai.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/llm-anthropic.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/llm-ollama.php';
+require_once ASKWP_PLUGIN_DIR . 'includes/llm-openrouter.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/llm-factory.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/rest-chat.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/rest-form.php';
