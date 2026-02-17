@@ -213,7 +213,7 @@ function askwp_enqueue_admin_assets($hook)
                 var val = $(this).val();
                 $(".askwp-provider-field").hide();
                 $(".askwp-provider-" + val).show();
-                if (val === "openai" || val === "anthropic") { $(".askwp-provider-api-key").show(); }
+                if (val === "openai" || val === "anthropic" || val === "openrouter") { $(".askwp-provider-api-key").show(); }
             }).filter(":checked").trigger("change");
         });
     ');
@@ -336,15 +336,16 @@ function askwp_render_tab_llm()
                 <fieldset>
                     <label><input type="radio" name="askwp_llm_provider" value="openai" <?php checked($provider, 'openai'); ?> /> OpenAI</label><br>
                     <label><input type="radio" name="askwp_llm_provider" value="anthropic" <?php checked($provider, 'anthropic'); ?> /> Anthropic</label><br>
+                    <label><input type="radio" name="askwp_llm_provider" value="openrouter" <?php checked($provider, 'openrouter'); ?> /> OpenRouter</label><br>
                     <label><input type="radio" name="askwp_llm_provider" value="ollama" <?php checked($provider, 'ollama'); ?> /> Ollama (local)</label>
                 </fieldset>
             </td>
         </tr>
-        <tr class="askwp-provider-field askwp-provider-api-key askwp-provider-openai askwp-provider-anthropic">
+        <tr class="askwp-provider-field askwp-provider-api-key askwp-provider-openai askwp-provider-anthropic askwp-provider-openrouter">
             <th><label for="askwp_api_key">API Key</label></th>
             <td>
                 <input type="password" id="askwp_api_key" name="askwp_api_key" value="<?php echo esc_attr($api_key); ?>" class="regular-text" autocomplete="off" />
-                <p class="description">Your OpenAI or Anthropic API key. Stored in WordPress options only.</p>
+                <p class="description">Your OpenAI, Anthropic, or OpenRouter API key. Stored in WordPress options only.</p>
             </td>
         </tr>
         <tr class="askwp-provider-field askwp-provider-ollama">
@@ -358,7 +359,7 @@ function askwp_render_tab_llm()
             <th><label for="askwp_model">Model</label></th>
             <td>
                 <input type="text" id="askwp_model" name="askwp_model" value="<?php echo esc_attr($model); ?>" class="regular-text" />
-                <p class="description">e.g. <code>gpt-4o</code>, <code>claude-sonnet-4-5-20250929</code>, <code>llama3</code></p>
+                <p class="description">e.g. <code>gpt-5</code>, <code>claude-sonnet-4-5-20250929</code>, <code>openai/gpt-5</code>, <code>llama3</code></p>
             </td>
         </tr>
         <tr>

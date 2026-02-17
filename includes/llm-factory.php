@@ -11,6 +11,8 @@ function askwp_get_llm_provider(): ASKWP_LLM_Provider
     switch ($provider) {
         case 'anthropic':
             return new ASKWP_LLM_Anthropic();
+        case 'openrouter':
+            return new ASKWP_LLM_OpenRouter();
         case 'ollama':
             return new ASKWP_LLM_Ollama();
         default:
