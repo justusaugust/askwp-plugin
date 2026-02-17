@@ -1,0 +1,190 @@
+/* AskWP – Admin Styles */
+
+.askwp-wrap {
+  max-width: 900px;
+}
+
+.askwp-wrap .nav-tab-wrapper {
+  margin-bottom: 20px;
+}
+
+/* Field layout */
+.askwp-wrap .form-table th {
+  width: 220px;
+  padding-right: 20px;
+}
+
+.askwp-wrap textarea {
+  width: 100%;
+  font-family: monospace;
+}
+
+.askwp-wrap input[type="text"],
+.askwp-wrap input[type="url"],
+.askwp-wrap input[type="number"],
+.askwp-wrap input[type="email"],
+.askwp-wrap select {
+  width: 100%;
+  max-width: 400px;
+}
+
+.askwp-wrap input[type="range"] {
+  width: 200px;
+  vertical-align: middle;
+}
+
+.askwp-wrap .description {
+  font-style: italic;
+  color: #646970;
+}
+
+/* Color pickers need space */
+.askwp-wrap .wp-picker-container {
+  display: inline-block;
+}
+
+/* Provider conditional visibility */
+.askwp-provider-row {
+  transition: opacity 0.2s ease;
+}
+
+.askwp-provider-row.askwp-hidden {
+  display: none;
+}
+
+/* Form builder */
+#askwp-form-builder {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.askwp-fb-card {
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  background: #fff;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  position: relative;
+}
+
+.askwp-fb-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.askwp-fb-card-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1d2327;
+}
+
+.askwp-fb-card-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.askwp-fb-card-actions button {
+  border: 1px solid #c3c4c7;
+  border-radius: 3px;
+  background: #f6f7f7;
+  color: #50575e;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.askwp-fb-card-actions button:hover {
+  background: #f0f0f1;
+  border-color: #8c8f94;
+  color: #1d2327;
+}
+
+.askwp-fb-card-actions .askwp-fb-remove {
+  color: #b32d2e;
+}
+
+.askwp-fb-card-actions .askwp-fb-remove:hover {
+  color: #a00;
+  border-color: #a00;
+}
+
+.askwp-fb-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.askwp-fb-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.askwp-fb-field {
+  display: grid;
+  gap: 2px;
+}
+
+.askwp-fb-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #50575e;
+  text-transform: uppercase;
+}
+
+.askwp-fb-field input,
+.askwp-fb-field select {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 13px;
+  border: 1px solid #c3c4c7;
+  border-radius: 3px;
+}
+
+.askwp-fb-field input:focus,
+.askwp-fb-field select:focus {
+  border-color: #2271b1;
+  box-shadow: 0 0 0 1px #2271b1;
+  outline: 0;
+}
+
+.askwp-fb-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Test email button */
+.askwp-test-email-result {
+  display: inline-block;
+  margin-left: 10px;
+  font-weight: 500;
+}
+
+.askwp-test-email-result.success {
+  color: #00a32a;
+}
+
+.askwp-test-email-result.error {
+  color: #d63638;
+}
+
+/* Icon preview */
+.askwp-icon-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.askwp-icon-preview img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  padding: 4px;
+}
