@@ -75,6 +75,8 @@ git add -A && git commit -m "..." && git push
 
 GitHub releases with ZIP:
 ```bash
-zip -r ../askwp.zip . -x '*.DS_Store' '*.git*'
+rsync -a --delete --exclude-from=.distignore ./ ../askwp-dist/
+(cd ../askwp-dist && zip -r ../askwp.zip .)
+rm -rf ../askwp-dist
 gh release create vX.Y.Z ../askwp.zip --repo justusaugust/askwp-plugin --title "AskWP vX.Y.Z"
 ```

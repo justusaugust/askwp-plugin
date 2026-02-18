@@ -80,6 +80,115 @@ function askwp_chat_status_reply($message)
     return 'Please fill out the form. It will be sent directly to us.';
 }
 
+function askwp_chat_image_attachments_enabled()
+{
+    return (bool) askwp_get_option('enable_image_attachments', 0);
+}
+
+function askwp_chat_max_payload_bytes()
+{
+    return askwp_chat_image_attachments_enabled() ? (6 * 1024 * 1024) : 50000;
+}
+
+function askwp_chat_provider_supports_images($provider_name)
+{
+    return in_array((string) $provider_name, array('openai', 'anthropic', 'openrouter'), true);
+}
+
+function askwp_chat_parse_image_attachment($raw_attachment)
+{
+    if ($raw_attachment === null || $raw_attachment === '' || $raw_attachment === false) {
+        return null;
+    }
+
+    if (!askwp_chat_image_attachments_enabled()) {
+        return new WP_Error('askwp_image_disabled', 'Image attachments are disabled on this site.', array('status' => 400));
+    }
+
+    if (!is_array($raw_attachment)) {
+        return new WP_Error('askwp_image_invalid', 'Invalid image attachment payload.', array('status' => 400));
+    }
+
+    $data_url = isset($raw_attachment['data_url']) ? trim((string) $raw_attachment['data_url']) : '';
+    if ($data_url === '') {
+        return new WP_Error('askwp_image_missing', 'Image attachment is missing data.', array('status' => 400));
+    }
+
+    $match = array();
+    if (!preg_match('/^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+\/=\r\n]+)$/i', $data_url, $match)) {
+        return new WP_Error('askwp_image_format', 'Unsupported image format. Use PNG, JPEG, WEBP, or GIF.', array('status' => 400));
+    }
+
+    $mime_type = strtolower((string) $match[1]);
+    if ($mime_type === 'image/jpg') {
+        $mime_type = 'image/jpeg';
+    }
+
+    $base64 = preg_replace('/\s+/', '', (string) $match[2]);
+    if (!is_string($base64) || $base64 === '') {
+        return new WP_Error('askwp_image_base64_empty', 'Image attachment is empty.', array('status' => 400));
+    }
+
+    $binary = base64_decode($base64, true);
+    if (!is_string($binary) || $binary === '') {
+        return new WP_Error('askwp_image_base64_invalid', 'Image attachment could not be decoded.', array('status' => 400));
+    }
+
+    $max_bytes = 2 * 1024 * 1024;
+    $size_bytes = strlen($binary);
+    if ($size_bytes > $max_bytes) {
+        return new WP_Error('askwp_image_too_large', 'Image is too large. Maximum size is 2MB.', array('status' => 413));
+    }
+
+    $name = isset($raw_attachment['name']) ? askwp_sanitize_line($raw_attachment['name'], 80) : 'image';
+    if ($name === '') {
+        $name = 'image';
+    }
+
+    return array(
+        'mime_type'  => $mime_type,
+        'base64'     => $base64,
+        'data_url'   => 'data:' . $mime_type . ';base64,' . $base64,
+        'name'       => $name,
+        'size_bytes' => $size_bytes,
+    );
+}
+
+function askwp_chat_attach_image_to_last_user_message($messages, $attachment)
+{
+    if (!is_array($messages) || empty($attachment) || !is_array($attachment)) {
+        return $messages;
+    }
+
+    for ($i = count($messages) - 1; $i >= 0; $i--) {
+        if (!isset($messages[$i]) || !is_array($messages[$i])) {
+            continue;
+        }
+        if (!isset($messages[$i]['role']) || $messages[$i]['role'] !== 'user') {
+            continue;
+        }
+
+        $text = isset($messages[$i]['content']) ? trim((string) $messages[$i]['content']) : '';
+        if ($text === '') {
+            $text = 'Please analyze this image.';
+        }
+
+        $messages[$i]['content'] = array(
+            array('type' => 'text', 'text' => $text),
+            array(
+                'type'      => 'image',
+                'mime_type' => isset($attachment['mime_type']) ? (string) $attachment['mime_type'] : 'image/png',
+                'data_url'  => isset($attachment['data_url']) ? (string) $attachment['data_url'] : '',
+                'base64'    => isset($attachment['base64']) ? (string) $attachment['base64'] : '',
+            ),
+        );
+
+        break;
+    }
+
+    return $messages;
+}
+
 function askwp_chat_search_tool_schema()
 {
     return array(
@@ -106,7 +215,7 @@ function askwp_chat_get_page_tool_schema()
     return array(
         'type'       => 'function',
         'name'       => 'get_page',
-        'description' => 'Load the full content of a website page. Use a URL from search_website results or from context.',
+        'description' => 'Load a page by URL. If the target body is thin, the tool may include supporting excerpts from related same-site pages.',
         'parameters' => array(
             'type'       => 'object',
             'properties' => array(
@@ -139,7 +248,7 @@ function askwp_chat_compact_faq_context($faq_raw, $max_items)
     return implode("\n", $items);
 }
 
-function askwp_chat_build_system_prompt($context_text, $page_title, $faq_raw, $use_search_tool = false)
+function askwp_chat_build_system_prompt($context_text, $page_title, $faq_raw, $use_search_tool = false, $has_image_attachment = false)
 {
     $bot_name = (string) askwp_get_option('bot_name', 'Chat Assistant');
     $admin_system = trim((string) askwp_get_option('system_instructions', askwp_default_system_instructions()));
@@ -152,9 +261,14 @@ function askwp_chat_build_system_prompt($context_text, $page_title, $faq_raw, $u
     $parts[] = $admin_system;
 
     if ($use_search_tool) {
-        $parts[] = 'You have two tools: search_website (finds pages) and get_page (loads full page content). If the provided context does not answer the question, use search_website first, then get_page for the most relevant result. Only respond after loading the page content.';
+        $parts[] = 'You have two tools: search_website (finds pages) and get_page (loads page content). If the provided context is not enough, use search_website first, then get_page for the best matches. get_page may return Content status: support_enriched when the target page is thin but related evidence exists; in that case answer directly from the supporting evidence, without leading with limitations and without labeling the answer as an inference. Never ask the visitor to paste URLs, text, screenshots, or other site content that can be retrieved via tools. Only if no substantive evidence exists after tool use, provide one concise best-effort inference (label it as an inference) and stop. For inferred statements, do not present text as a direct quote from the target page.';
     } else {
         $parts[] = 'Context priority: 1) CURRENT_PAGE (high), 2) WP_SEARCH (medium), 3) FAQ_MATCHES (low).';
+    }
+
+    $parts[] = 'Formatting support in the chat UI includes headings, nested lists, blockquotes, tables, horizontal rules, fenced code blocks, links, and Markdown images with absolute URLs. Use these only when they improve readability. Do not paste bare URLs in the answer body unless the visitor explicitly asks for direct links; source pills are shown separately.';
+    if ($has_image_attachment) {
+        $parts[] = 'The latest visitor message includes an attached image. Analyze that image directly and combine its details with website context in your answer.';
     }
 
     if ($context_pack !== '') {
@@ -224,9 +338,21 @@ function askwp_rest_chat_handler($request)
         return new WP_Error('askwp_invalid_payload', 'Invalid JSON payload.', array('status' => 400));
     }
 
+    $max_payload_bytes = askwp_chat_max_payload_bytes();
     $payload_encoded = wp_json_encode($payload);
-    if (is_string($payload_encoded) && strlen($payload_encoded) > 50000) {
+    if (is_string($payload_encoded) && strlen($payload_encoded) > $max_payload_bytes) {
         return new WP_Error('askwp_payload_too_large', 'Payload too large.', array('status' => 413));
+    }
+
+    $image_attachment = askwp_chat_parse_image_attachment(isset($payload['attachment']) ? $payload['attachment'] : null);
+    if (is_wp_error($image_attachment)) {
+        return $image_attachment;
+    }
+
+    $provider = askwp_get_llm_provider();
+    $provider_name = $provider->get_name();
+    if (is_array($image_attachment) && !askwp_chat_provider_supports_images($provider_name)) {
+        return new WP_Error('askwp_image_provider_unsupported', 'Image attachments are not supported by the selected LLM provider.', array('status' => 400));
     }
 
     $messages = isset($payload['messages']) && is_array($payload['messages']) ? $payload['messages'] : array();
@@ -264,6 +390,14 @@ function askwp_rest_chat_handler($request)
         if ($role === 'user') {
             $latest_user_message = $content;
         }
+    }
+
+    if ($latest_user_message === '' && is_array($image_attachment)) {
+        $latest_user_message = '[IMAGE_ATTACHED]';
+        $clean_messages[] = array(
+            'role'    => 'user',
+            'content' => $latest_user_message,
+        );
     }
 
     if ($latest_user_message === '') {
@@ -319,10 +453,8 @@ function askwp_rest_chat_handler($request)
                 return 'No search terms provided.';
             }
 
-            $results = askwp_rag_search_posts($query, $exclude_post_id);
-            $query_terms = askwp_rag_query_terms($query);
             $max_results = (int) askwp_get_option('rag_max_results', 4);
-            $results = askwp_rag_rank_search_results($results, $query_terms, $max_results + 1);
+            $results = askwp_rag_tool_search($query, $exclude_post_id, $max_results + 2);
 
             if (empty($results)) {
                 return 'No results for "' . $query . '".';
@@ -348,30 +480,30 @@ function askwp_rest_chat_handler($request)
                 return 'No URL provided.';
             }
 
-            $page = askwp_rag_resolve_page($url);
-            if (!is_array($page)) {
+            $page_payload = askwp_rag_get_page_tool_payload($url, 3000);
+            if (!is_array($page_payload) || empty($page_payload['page']) || empty($page_payload['text'])) {
                 return 'Page not found: ' . $url;
             }
 
+            $page = $page_payload['page'];
             $tool_sources[] = array('title' => $page['title'], 'url' => $page['url']);
 
-            $post = get_post((int) $page['post_id']);
-            $content = ($post instanceof WP_Post) ? askwp_rag_extract_post_text($post, 3000) : $page['content'];
-
-            return $page['title'] . "\nURL: " . $page['url'] . "\n\n" . $content;
+            return (string) $page_payload['text'];
         }
 
         return 'Unknown tool.';
     };
 
+    $clean_messages = askwp_chat_attach_image_to_last_user_message($clean_messages, $image_attachment);
+
     // Build system prompt.
-    $provider = askwp_get_llm_provider();
     $use_tools = $provider->supports_tools();
     $system_prompt = askwp_chat_build_system_prompt(
         $slim_context['context_text'],
         $page_title,
         $faq_raw,
-        $use_tools
+        $use_tools,
+        is_array($image_attachment)
     );
 
     // Build tool schemas.
@@ -388,7 +520,10 @@ function askwp_rest_chat_handler($request)
     $usage = null;
 
     if (is_wp_error($result)) {
-        error_log('AskWP chat generation failed: ' . $result->get_error_code() . ' - ' . $result->get_error_message());
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            error_log('AskWP chat generation failed: ' . $result->get_error_code() . ' - ' . $result->get_error_message());
+        }
         $reply = 'I cannot generate a reliable response right now. Please try again later or contact us directly.';
     } else {
         $reply = trim((string) $result['text']);

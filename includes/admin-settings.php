@@ -20,10 +20,14 @@ function askwp_admin_settings_by_tab()
 {
     return array(
         'general' => array(
-            'askwp_enable_widget'     => array('type' => 'boolean', 'sanitize' => 'askwp_sanitize_checkbox'),
-            'askwp_bot_name'          => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
-            'askwp_default_language'  => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
-            'askwp_widget_position'   => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
+            'askwp_enable_widget'          => array('type' => 'boolean', 'sanitize' => 'askwp_sanitize_checkbox'),
+            'askwp_bot_name'               => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
+            'askwp_default_language'       => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
+            'askwp_widget_position'        => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
+            'askwp_enable_favicon'         => array('type' => 'boolean', 'sanitize' => 'askwp_sanitize_checkbox'),
+            'askwp_enable_image_attachments' => array('type' => 'boolean', 'sanitize' => 'askwp_sanitize_checkbox'),
+            'askwp_show_stream_steps'      => array('type' => 'boolean', 'sanitize' => 'askwp_sanitize_checkbox'),
+            'askwp_suggested_questions'    => array('type' => 'string',  'sanitize' => 'askwp_sanitize_suggested_questions'),
         ),
         'llm' => array(
             'askwp_llm_provider'      => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
@@ -59,14 +63,18 @@ function askwp_admin_settings_by_tab()
             'askwp_color_primary'        => array('type' => 'string',  'sanitize' => 'sanitize_hex_color'),
             'askwp_color_secondary'      => array('type' => 'string',  'sanitize' => 'sanitize_hex_color'),
             'askwp_color_text'           => array('type' => 'string',  'sanitize' => 'sanitize_hex_color'),
+            'askwp_theme_mode'           => array('type' => 'string',  'sanitize' => 'askwp_sanitize_theme_mode'),
             'askwp_chat_icon'            => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
             'askwp_chat_icon_custom_url' => array('type' => 'string',  'sanitize' => 'esc_url_raw'),
             'askwp_bot_avatar_url'       => array('type' => 'string',  'sanitize' => 'esc_url_raw'),
             'askwp_border_radius'        => array('type' => 'integer', 'sanitize' => 'absint'),
             'askwp_font_family'          => array('type' => 'string',  'sanitize' => 'sanitize_text_field'),
             'askwp_widget_width'         => array('type' => 'integer', 'sanitize' => 'absint'),
+            'askwp_panel_size'           => array('type' => 'string',  'sanitize' => 'askwp_sanitize_panel_size'),
             'askwp_widget_zindex'        => array('type' => 'integer', 'sanitize' => 'absint'),
             'askwp_custom_css'           => array('type' => 'string',  'sanitize' => 'sanitize_textarea_field'),
+            'askwp_custom_css_light'     => array('type' => 'string',  'sanitize' => 'sanitize_textarea_field'),
+            'askwp_custom_css_dark'      => array('type' => 'string',  'sanitize' => 'sanitize_textarea_field'),
         ),
         'limits' => array(
             'askwp_chat_rate_limit_hourly' => array('type' => 'integer', 'sanitize' => 'askwp_sanitize_rate_limit'),
@@ -108,6 +116,24 @@ function askwp_sanitize_rate_limit($value)
     return ($limit > 0) ? $limit : 10;
 }
 
+function askwp_sanitize_theme_mode($value)
+{
+    $mode = sanitize_key((string) $value);
+    if (!in_array($mode, array('auto', 'light', 'dark'), true)) {
+        return 'auto';
+    }
+    return $mode;
+}
+
+function askwp_sanitize_panel_size($value)
+{
+    $size = sanitize_key((string) $value);
+    if (!in_array($size, array('compact', 'normal', 'large'), true)) {
+        return 'normal';
+    }
+    return $size;
+}
+
 function askwp_sanitize_email_field($value)
 {
     $email = sanitize_email((string) $value);
@@ -123,6 +149,62 @@ function askwp_sanitize_post_types($value)
         return array('page', 'post');
     }
     return array_map('sanitize_key', $value);
+}
+
+function askwp_sanitize_suggested_questions($value)
+{
+    $text = sanitize_textarea_field((string) $value);
+    $lines = array_filter(array_map('trim', explode("\n", $text)));
+    $questions = array();
+    foreach (array_slice($lines, 0, 8) as $line) {
+        $q = askwp_text_substr(sanitize_text_field($line), 150);
+        if ($q !== '') {
+            $questions[] = $q;
+        }
+    }
+    return wp_json_encode(array_values($questions));
+}
+
+function askwp_suggested_question_presets()
+{
+    return array(
+        'general'   => array(
+            'label'     => 'General Business',
+            'questions' => array(
+                'What services do you offer?',
+                'How can I contact your team?',
+                'What are your business hours?',
+                'Where are you located?',
+            ),
+        ),
+        'saas'      => array(
+            'label'     => 'SaaS',
+            'questions' => array(
+                'How does your product work?',
+                'What pricing plans do you offer?',
+                'Do you offer a free trial?',
+                'How do I get started?',
+            ),
+        ),
+        'ecommerce' => array(
+            'label'     => 'E-commerce',
+            'questions' => array(
+                'What is your return policy?',
+                'How long does shipping take?',
+                'Do you ship internationally?',
+                'How can I track my order?',
+            ),
+        ),
+        'agency'    => array(
+            'label'     => 'Agency',
+            'questions' => array(
+                'What kind of projects do you take on?',
+                'Can I see examples of your work?',
+                'What is your typical process?',
+                'How do I request a quote?',
+            ),
+        ),
+    );
 }
 
 function askwp_sanitize_form_fields_json($value)
@@ -169,6 +251,7 @@ function askwp_enqueue_admin_assets($hook)
         ASKWP_PLUGIN_VERSION
     );
 
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Tab navigation only, no data processing.
     $tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
 
     if ($tab === 'appearance') {
@@ -185,6 +268,26 @@ function askwp_enqueue_admin_assets($hook)
             ASKWP_PLUGIN_VERSION,
             true
         );
+    }
+
+    if ($tab === 'usage') {
+        wp_enqueue_script(
+            'askwp-usage-dashboard',
+            ASKWP_PLUGIN_URL . 'assets/admin-usage-dashboard.js',
+            array(),
+            ASKWP_PLUGIN_VERSION,
+            true
+        );
+
+        $log = get_option('askwp_token_log', array());
+        if (!is_array($log)) {
+            $log = array();
+        }
+
+        wp_localize_script('askwp-usage-dashboard', 'ASKWP_USAGE_DATA', array(
+            'log'     => $log,
+            'pricing' => askwp_token_pricing_table(),
+        ));
     }
 
     // Inline script for tab-specific behavior.
@@ -236,8 +339,10 @@ function askwp_render_settings_page()
         'form'       => 'Form Builder',
         'appearance' => 'Appearance',
         'limits'     => 'Rate Limits',
+        'usage'      => 'Usage',
     );
 
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Tab navigation only, no data processing.
     $current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
     if (!isset($tabs[$current_tab])) {
         $current_tab = 'general';
@@ -257,11 +362,15 @@ function askwp_render_settings_page()
             <?php endforeach; ?>
         </nav>
 
+        <?php if ($current_tab === 'usage') : ?>
+            <?php askwp_render_tab_usage(); ?>
+        <?php else : ?>
         <form method="post" action="options.php">
             <?php settings_fields('askwp_' . $current_tab . '_group'); ?>
             <?php call_user_func('askwp_render_tab_' . $current_tab); ?>
             <?php submit_button('Save Settings'); ?>
         </form>
+        <?php endif; ?>
 
         <?php if ($current_tab === 'limits') : ?>
             <hr />
@@ -278,6 +387,9 @@ function askwp_render_settings_page()
 function askwp_render_tab_general()
 {
     $enable_widget = (int) askwp_get_option('enable_widget', 1);
+    $enable_favicon = (int) askwp_get_option('enable_favicon', 0);
+    $enable_image_attachments = (int) askwp_get_option('enable_image_attachments', 0);
+    $show_stream_steps = (int) askwp_get_option('show_stream_steps', 1);
     $bot_name = (string) askwp_get_option('bot_name', 'Chat Assistant');
     $language = (string) askwp_get_option('default_language', 'en');
     $position = (string) askwp_get_option('widget_position', 'bottom-right');
@@ -288,6 +400,27 @@ function askwp_render_tab_general()
             <td>
                 <input type="checkbox" id="askwp_enable_widget" name="askwp_enable_widget" value="1" <?php checked(1, $enable_widget); ?> />
                 <p class="description">Show the floating chat widget on all frontend pages.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="askwp_enable_favicon">Override Favicon</label></th>
+            <td>
+                <input type="checkbox" id="askwp_enable_favicon" name="askwp_enable_favicon" value="1" <?php checked(1, $enable_favicon); ?> />
+                <p class="description">Replace the site favicon with the AskWP icon.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="askwp_enable_image_attachments">Allow Image Attachments</label></th>
+            <td>
+                <input type="checkbox" id="askwp_enable_image_attachments" name="askwp_enable_image_attachments" value="1" <?php checked(1, $enable_image_attachments); ?> />
+                <p class="description">Allow visitors to attach one image (max 2MB) with each chat message. Works with OpenAI, Anthropic, and OpenRouter vision-capable models.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="askwp_show_stream_steps">Show Retrieval Steps</label></th>
+            <td>
+                <input type="checkbox" id="askwp_show_stream_steps" name="askwp_show_stream_steps" value="1" <?php checked(1, $show_stream_steps); ?> />
+                <p class="description">Show live retrieval status steps before the assistant answer starts streaming.</p>
             </td>
         </tr>
         <tr>
@@ -314,6 +447,45 @@ function askwp_render_tab_general()
                     <option value="bottom-right" <?php selected($position, 'bottom-right'); ?>>Bottom Right</option>
                     <option value="bottom-left" <?php selected($position, 'bottom-left'); ?>>Bottom Left</option>
                 </select>
+            </td>
+        </tr>
+        <?php
+        $sq_raw = askwp_get_option('suggested_questions', '[]');
+        $sq_arr = is_string($sq_raw) ? json_decode($sq_raw, true) : $sq_raw;
+        if (!is_array($sq_arr)) { $sq_arr = array(); }
+        $sq_text = implode("\n", $sq_arr);
+        $presets = askwp_suggested_question_presets();
+        ?>
+        <tr>
+            <th><label for="askwp_suggested_questions">Suggested Questions</label></th>
+            <td>
+                <textarea id="askwp_suggested_questions" name="askwp_suggested_questions" rows="5" class="large-text" placeholder="What services do you offer?&#10;How can I contact your team?"><?php echo esc_textarea($sq_text); ?></textarea>
+                <p class="description">One question per line (max 8, 150 chars each). Shown as clickable chips when the chat opens.</p>
+                <p style="margin-top:8px;">
+                    <label for="askwp_sq_preset"><strong>Load Preset:</strong></label>
+                    <select id="askwp_sq_preset" style="margin-left:6px;">
+                        <option value="">— Select —</option>
+                        <?php foreach ($presets as $key => $preset) : ?>
+                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($preset['label']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </p>
+                <script>
+                (function() {
+                    var presets = <?php echo wp_json_encode(array_map(function($p) { return $p['questions']; }, $presets)); ?>;
+                    var sel = document.getElementById('askwp_sq_preset');
+                    var ta = document.getElementById('askwp_suggested_questions');
+                    if (sel && ta) {
+                        sel.addEventListener('change', function() {
+                            var key = sel.value;
+                            if (key && presets[key]) {
+                                ta.value = presets[key].join('\n');
+                            }
+                            sel.value = '';
+                        });
+                    }
+                })();
+                </script>
             </td>
         </tr>
     </table>
@@ -535,14 +707,18 @@ function askwp_render_tab_appearance()
     $color_primary = (string) askwp_get_option('color_primary', '#2563eb');
     $color_secondary = (string) askwp_get_option('color_secondary', '#1e293b');
     $color_text = (string) askwp_get_option('color_text', '#1f2937');
+    $theme_mode = (string) askwp_get_option('theme_mode', 'auto');
     $chat_icon = (string) askwp_get_option('chat_icon', 'chat-bubble');
     $chat_icon_custom = (string) askwp_get_option('chat_icon_custom_url', '');
     $bot_avatar = (string) askwp_get_option('bot_avatar_url', '');
     $border_radius = (int) askwp_get_option('border_radius', 16);
     $font_family = (string) askwp_get_option('font_family', '');
     $widget_width = (int) askwp_get_option('widget_width', 380);
+    $panel_size = (string) askwp_get_option('panel_size', 'normal');
     $widget_zindex = (int) askwp_get_option('widget_zindex', 999999);
     $custom_css = (string) askwp_get_option('custom_css', '');
+    $custom_css_light = (string) askwp_get_option('custom_css_light', '');
+    $custom_css_dark = (string) askwp_get_option('custom_css_dark', '');
     ?>
     <table class="form-table">
         <tr>
@@ -556,6 +732,17 @@ function askwp_render_tab_appearance()
         <tr>
             <th><label for="askwp_color_text">Text Color</label></th>
             <td><input type="text" id="askwp_color_text" name="askwp_color_text" value="<?php echo esc_attr($color_text); ?>" class="askwp-color-field" /></td>
+        </tr>
+        <tr>
+            <th><label for="askwp_theme_mode">Theme Mode</label></th>
+            <td>
+                <select id="askwp_theme_mode" name="askwp_theme_mode">
+                    <option value="auto" <?php selected($theme_mode, 'auto'); ?>>Auto (follow visitor device)</option>
+                    <option value="light" <?php selected($theme_mode, 'light'); ?>>Always Light</option>
+                    <option value="dark" <?php selected($theme_mode, 'dark'); ?>>Always Dark</option>
+                </select>
+                <p class="description">Auto uses <code>prefers-color-scheme</code> and updates live if the visitor switches OS theme.</p>
+            </td>
         </tr>
         <tr>
             <th>Chat Icon</th>
@@ -601,6 +788,17 @@ function askwp_render_tab_appearance()
             <td><input type="number" id="askwp_widget_width" name="askwp_widget_width" value="<?php echo esc_attr($widget_width); ?>" min="300" max="600" step="10" /></td>
         </tr>
         <tr>
+            <th><label for="askwp_panel_size">Panel Size Preset</label></th>
+            <td>
+                <select id="askwp_panel_size" name="askwp_panel_size">
+                    <option value="compact" <?php selected($panel_size, 'compact'); ?>>Compact</option>
+                    <option value="normal" <?php selected($panel_size, 'normal'); ?>>Normal</option>
+                    <option value="large" <?php selected($panel_size, 'large'); ?>>Large</option>
+                </select>
+                <p class="description">Adjusts chat panel width/height as a quick preset for different site layouts.</p>
+            </td>
+        </tr>
+        <tr>
             <th><label for="askwp_widget_zindex">Z-Index</label></th>
             <td><input type="number" id="askwp_widget_zindex" name="askwp_widget_zindex" value="<?php echo esc_attr($widget_zindex); ?>" min="1" max="9999999" /></td>
         </tr>
@@ -608,6 +806,21 @@ function askwp_render_tab_appearance()
             <th><label for="askwp_custom_css">Custom CSS</label></th>
             <td>
                 <textarea id="askwp_custom_css" name="askwp_custom_css" rows="6" class="large-text code"><?php echo esc_textarea($custom_css); ?></textarea>
+                <p class="description">Applied in both light and dark mode.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="askwp_custom_css_light">Custom CSS (Light Mode)</label></th>
+            <td>
+                <textarea id="askwp_custom_css_light" name="askwp_custom_css_light" rows="6" class="large-text code"><?php echo esc_textarea($custom_css_light); ?></textarea>
+                <p class="description">Applied only while the widget is in light mode.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="askwp_custom_css_dark">Custom CSS (Dark Mode)</label></th>
+            <td>
+                <textarea id="askwp_custom_css_dark" name="askwp_custom_css_dark" rows="6" class="large-text code"><?php echo esc_textarea($custom_css_dark); ?></textarea>
+                <p class="description">Applied only while the widget is in dark mode.</p>
             </td>
         </tr>
     </table>
@@ -629,5 +842,32 @@ function askwp_render_tab_limits()
             <td><input type="number" id="askwp_form_rate_limit_daily" name="askwp_form_rate_limit_daily" value="<?php echo esc_attr($form_limit); ?>" min="1" /></td>
         </tr>
     </table>
+    <?php
+}
+
+function askwp_token_pricing_table()
+{
+    return array(
+        'gpt-4o'                       => array('input' => 2.50,  'output' => 10.00),
+        'gpt-4o-mini'                  => array('input' => 0.15,  'output' => 0.60),
+        'gpt-4.1'                      => array('input' => 2.00,  'output' => 8.00),
+        'gpt-4.1-mini'                 => array('input' => 0.40,  'output' => 1.60),
+        'gpt-4.1-nano'                 => array('input' => 0.10,  'output' => 0.40),
+        'gpt-5'                        => array('input' => 2.00, 'output' => 8.00),
+        'claude-sonnet-4-5-20250929'   => array('input' => 3.00,  'output' => 15.00),
+        'claude-haiku-3-5-20241022'    => array('input' => 0.80,  'output' => 4.00),
+        'claude-3-haiku-20240307'      => array('input' => 0.25,  'output' => 1.25),
+    );
+}
+
+function askwp_render_tab_usage()
+{
+    ?>
+    <div id="askwp-usage-summary" class="askwp-usage-summary"></div>
+    <h3>Daily Usage (Last 30 Days)</h3>
+    <div id="askwp-usage-chart" class="askwp-chart"></div>
+    <h3>Model Breakdown</h3>
+    <div id="askwp-usage-model-table"></div>
+    <p class="description" style="margin-top:16px;">Token log stores the last 500 requests. Cost estimates are approximate based on published API pricing.</p>
     <?php
 }

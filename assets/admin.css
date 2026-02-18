@@ -172,6 +172,117 @@
   color: #d63638;
 }
 
+/* ── Usage Dashboard ── */
+
+.askwp-usage-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+
+.askwp-usage-card {
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  padding: 16px;
+  text-align: center;
+}
+
+.askwp-usage-card-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1d2327;
+  line-height: 1.2;
+}
+
+.askwp-usage-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #646970;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.askwp-chart {
+  margin: 12px 0 24px;
+}
+
+.askwp-chart-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  min-height: 140px;
+  padding: 8px 0;
+  overflow-x: auto;
+}
+
+.askwp-chart-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 18px;
+}
+
+.askwp-chart-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 24px;
+  cursor: default;
+}
+
+.askwp-chart-seg {
+  border-radius: 2px 2px 0 0;
+}
+
+.askwp-chart-seg-input {
+  background: #2271b1;
+}
+
+.askwp-chart-seg-output {
+  background: #72aee6;
+  border-radius: 2px 2px 0 0;
+}
+
+.askwp-chart-seg + .askwp-chart-seg {
+  border-radius: 0;
+}
+
+.askwp-chart-seg:last-child {
+  border-radius: 0 0 2px 2px;
+}
+
+.askwp-chart-seg:first-child {
+  border-radius: 2px 2px 0 0;
+}
+
+.askwp-chart-label {
+  font-size: 9px;
+  color: #646970;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.askwp-chart-legend {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #646970;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.askwp-usage-table {
+  margin-top: 8px;
+}
+
+.askwp-usage-table code {
+  font-size: 12px;
+}
+
 /* Icon preview */
 .askwp-icon-preview {
   display: inline-flex;

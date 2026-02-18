@@ -16,6 +16,108 @@ class ASKWP_LLM_Ollama extends ASKWP_LLM_Provider
         return false;
     }
 
+    public function supports_streaming(): bool
+    {
+        return true;
+    }
+
+    public function send_stream(array $messages, string $system_prompt, array $options, callable $on_delta): mixed
+    {
+        $endpoint = trim((string) askwp_get_option('ollama_endpoint', 'http://localhost:11434'));
+        if ($endpoint === '') {
+            $endpoint = 'http://localhost:11434';
+        }
+        $endpoint = rtrim($endpoint, '/');
+
+        $model = trim((string) askwp_get_option('model', 'llama3'));
+        if ($model === '') {
+            $model = 'llama3';
+        }
+
+        $max_tokens = isset($options['max_output_tokens']) ? (int) $options['max_output_tokens'] : 500;
+        $max_tokens = max(120, min(4000, $max_tokens));
+        $temperature = isset($options['temperature']) ? (float) $options['temperature'] : 0.7;
+
+        $openai_messages = array();
+        if ($system_prompt !== '') {
+            $openai_messages[] = array('role' => 'system', 'content' => $system_prompt);
+        }
+
+        foreach ($messages as $message) {
+            if (!is_array($message)) { continue; }
+            $role = isset($message['role']) ? strtolower((string) $message['role']) : 'user';
+            if (!in_array($role, array('user', 'assistant'), true)) { continue; }
+            $content = isset($message['content']) ? trim((string) $message['content']) : '';
+            if ($content === '') { continue; }
+            $openai_messages[] = array('role' => $role, 'content' => $content);
+        }
+
+        if (empty($openai_messages)) {
+            return new WP_Error('askwp_ollama_invalid_input', 'No valid messages for Ollama.');
+        }
+
+        $payload = array(
+            'model'       => $model,
+            'messages'    => $openai_messages,
+            'max_tokens'  => $max_tokens,
+            'temperature' => $temperature,
+            'stream'      => true,
+        );
+
+        $buffer = '';
+        $usage = array('input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0);
+
+        $write_callback = function ($ch, $chunk) use (&$buffer, $on_delta, &$usage) {
+            $buffer .= $chunk;
+
+            while (($pos = strpos($buffer, "\n")) !== false) {
+                $line = substr($buffer, 0, $pos);
+                $buffer = substr($buffer, $pos + 1);
+                $line = trim($line);
+
+                if ($line === '' || strpos($line, 'data: ') !== 0) { continue; }
+
+                $json_str = substr($line, 6);
+                if ($json_str === '[DONE]') { continue; }
+
+                $event = json_decode($json_str, true);
+                if (!is_array($event)) { continue; }
+
+                if (isset($event['choices'][0]['delta']['content'])) {
+                    $text = (string) $event['choices'][0]['delta']['content'];
+                    if ($text !== '') {
+                        call_user_func($on_delta, $text);
+                    }
+                }
+
+                if (isset($event['usage'])) {
+                    $u = $event['usage'];
+                    $usage['input_tokens']  = isset($u['prompt_tokens']) ? (int) $u['prompt_tokens'] : $usage['input_tokens'];
+                    $usage['output_tokens'] = isset($u['completion_tokens']) ? (int) $u['completion_tokens'] : $usage['output_tokens'];
+                    $usage['total_tokens']  = isset($u['total_tokens']) ? (int) $u['total_tokens'] : $usage['total_tokens'];
+                }
+            }
+
+            return strlen($chunk);
+        };
+
+        $result = $this->stream_request(
+            $endpoint . '/v1/chat/completions',
+            array('Content-Type' => 'application/json'),
+            $payload,
+            $write_callback
+        );
+
+        if (is_wp_error($result)) {
+            return new WP_Error('askwp_ollama_transport', $result->get_error_message());
+        }
+
+        return array(
+            'usage'      => $usage,
+            'tool_calls' => array(),
+        );
+    }
+
     public function send(array $messages, string $system_prompt, array $options): mixed
     {
         $endpoint = trim((string) askwp_get_option('ollama_endpoint', 'http://localhost:11434'));
@@ -90,7 +192,10 @@ class ASKWP_LLM_Ollama extends ASKWP_LLM_Provider
 
         $status = (int) wp_remote_retrieve_response_code($response);
         if ($status < 200 || $status >= 300) {
-            error_log('AskWP Ollama HTTP error: ' . $status . ' body: ' . wp_remote_retrieve_body($response));
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                error_log('AskWP Ollama HTTP error: ' . $status . ' body: ' . wp_remote_retrieve_body($response));
+            }
             return new WP_Error('askwp_ollama_http_' . $status, 'Ollama API error (HTTP ' . $status . ').');
         }
 

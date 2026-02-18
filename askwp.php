@@ -1,9 +1,11 @@
 <?php
 /**
  * Plugin Name: AskWP
+ * Plugin URI: https://askwp.dev
  * Description: White-label floating chat widget with RAG, multi-provider LLM support, and configurable contact form.
- * Version: 2.0.0
+ * Version: 2.3.3
  * Author: Justus August
+ * Author URI: https://askwp.dev
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: askwp
@@ -13,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('ASKWP_PLUGIN_VERSION', '2.0.0');
+define('ASKWP_PLUGIN_VERSION', '2.3.3');
 define('ASKWP_PLUGIN_FILE', __FILE__);
 define('ASKWP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ASKWP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -27,7 +29,8 @@ function askwp_default_system_instructions()
         . "- Speak as a team member who genuinely cares about helping the visitor.\n"
         . "- If you don't have enough information, say so honestly and offer to connect them with our team.\n"
         . "- Be concise (2-6 sentences) unless the visitor asks for more detail.\n"
-        . "- Use markdown for structure (lists, **bold**) when it helps readability.\n"
+        . "- Use Markdown structure when it improves clarity: headings, lists (including nested), blockquotes, tables, horizontal rules, links, code blocks, and images with absolute URLs.\n"
+        . "- If a visitor attaches an image, analyze it directly and combine that with website context in your answer.\n"
         . "- Never make up facts. Only use information from the provided context.\n"
         . "- Answer in the language the visitor writes in.";
 }
@@ -49,6 +52,9 @@ function askwp_default_options()
         'askwp_bot_name'               => 'Chat Assistant',
         'askwp_default_language'       => 'en',
         'askwp_widget_position'        => 'bottom-right',
+        'askwp_enable_favicon'         => 0,
+        'askwp_enable_image_attachments' => 0,
+        'askwp_show_stream_steps'      => 1,
         // LLM
         'askwp_llm_provider'           => 'openai',
         'askwp_api_key'                => '',
@@ -83,10 +89,16 @@ function askwp_default_options()
         'askwp_chat_icon_custom_url'   => '',
         'askwp_bot_avatar_url'         => '',
         'askwp_border_radius'          => 16,
+        'askwp_theme_mode'            => 'auto',
         'askwp_font_family'            => '',
         'askwp_widget_width'           => 380,
+        'askwp_panel_size'             => 'normal',
         'askwp_widget_zindex'          => 999999,
         'askwp_custom_css'             => '',
+        'askwp_custom_css_light'       => '',
+        'askwp_custom_css_dark'        => '',
+        // Suggested questions
+        'askwp_suggested_questions'    => '[]',
         // Rate limits
         'askwp_chat_rate_limit_hourly' => 60,
         'askwp_form_rate_limit_daily'  => 10,
@@ -116,11 +128,18 @@ function askwp_activate_plugin()
             add_option($key, $value);
         }
     }
+
+    delete_option('askwp_rag_site_index_v1');
+    delete_option('askwp_rag_site_index_v2');
+
+    if (!wp_next_scheduled('askwp_rag_refresh_site_index_event')) {
+        wp_schedule_event(time() + 300, 'hourly', 'askwp_rag_refresh_site_index_event');
+    }
 }
 
 function askwp_deactivate_plugin()
 {
-    // No-op by design.
+    wp_clear_scheduled_hook('askwp_rag_refresh_site_index_event');
 }
 
 register_activation_hook(__FILE__, 'askwp_activate_plugin');
@@ -136,10 +155,14 @@ require_once ASKWP_PLUGIN_DIR . 'includes/llm-openrouter.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/llm-factory.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/rest-chat.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/rest-form.php';
+require_once ASKWP_PLUGIN_DIR . 'includes/stream-chat.php';
 require_once ASKWP_PLUGIN_DIR . 'includes/admin-settings.php';
 
 function askwp_add_favicon()
 {
+    if (!((bool) askwp_get_option('enable_favicon', 0))) {
+        return;
+    }
     echo '<link rel="icon" type="image/svg+xml" href="' . esc_url(ASKWP_PLUGIN_URL . 'assets/favicon.svg') . '">' . "\n";
 }
 add_action('wp_head', 'askwp_add_favicon');
@@ -175,8 +198,16 @@ function askwp_enqueue_widget_assets()
     $color_text      = sanitize_hex_color(askwp_get_option('color_text', '#1f2937')) ?: '#1f2937';
     $border_radius   = absint(askwp_get_option('border_radius', 16));
     $widget_width    = absint(askwp_get_option('widget_width', 380));
+    $panel_size      = sanitize_key((string) askwp_get_option('panel_size', 'normal'));
+    if (!in_array($panel_size, array('compact', 'normal', 'large'), true)) {
+        $panel_size = 'normal';
+    }
     $widget_zindex   = absint(askwp_get_option('widget_zindex', 999999));
     $font_family     = sanitize_text_field(askwp_get_option('font_family', ''));
+    $theme_mode      = sanitize_key((string) askwp_get_option('theme_mode', 'auto'));
+    if (!in_array($theme_mode, array('auto', 'light', 'dark'), true)) {
+        $theme_mode = 'auto';
+    }
 
     $css_vars = ":root {\n"
         . "  --askwp-color-primary: {$color_primary};\n"
@@ -186,11 +217,14 @@ function askwp_enqueue_widget_assets()
         . "  --askwp-widget-width: {$widget_width}px;\n"
         . "  --askwp-widget-zindex: {$widget_zindex};\n";
     if ($font_family !== '') {
-        $css_vars .= "  --askwp-font-family: {$font_family};\n";
+        $safe_font = str_replace(array(';', '}', '{', '<', '>'), '', $font_family);
+        $css_vars .= "  --askwp-font-family: {$safe_font};\n";
     }
     $css_vars .= '}';
 
     $custom_css = sanitize_textarea_field(askwp_get_option('custom_css', ''));
+    $custom_css_light = sanitize_textarea_field(askwp_get_option('custom_css_light', ''));
+    $custom_css_dark = sanitize_textarea_field(askwp_get_option('custom_css_dark', ''));
     if ($custom_css !== '') {
         $css_vars .= "\n" . $custom_css;
     }
@@ -205,16 +239,32 @@ function askwp_enqueue_widget_assets()
         true
     );
 
+    $suggested_raw = askwp_get_option('suggested_questions', '[]');
+    $suggested = is_string($suggested_raw) ? json_decode($suggested_raw, true) : $suggested_raw;
+    if (!is_array($suggested)) {
+        $suggested = array();
+    }
+
     wp_localize_script('askwp-widget', 'ASKWP_CONFIG', array(
         'enabled'      => true,
         'chat_url'     => esc_url_raw(rest_url('askwp/v1/chat')),
+        'stream_url'   => admin_url('admin-ajax.php?action=askwp_stream_chat'),
+        'stream_progress_url' => admin_url('admin-ajax.php?action=askwp_stream_progress'),
+        'show_stream_steps' => (bool) askwp_get_option('show_stream_steps', 1),
         'form_url'     => esc_url_raw(rest_url('askwp/v1/submit_form')),
         'max_messages' => 12,
+        'panel_size'   => $panel_size,
+        'image_attachments_enabled' => (bool) askwp_get_option('enable_image_attachments', 0),
+        'max_image_bytes' => 2 * 1024 * 1024,
         'bot_name'     => $bot_name,
+        'theme_mode'   => $theme_mode,
+        'custom_css_light' => $custom_css_light,
+        'custom_css_dark'  => $custom_css_dark,
         'position'     => askwp_get_option('widget_position', 'bottom-right'),
         'chat_icon'    => askwp_get_option('chat_icon', 'chat-bubble'),
         'chat_icon_custom_url' => esc_url_raw(askwp_get_option('chat_icon_custom_url', '')),
         'bot_avatar_url' => esc_url_raw(askwp_get_option('bot_avatar_url', '')),
+        'suggested_questions' => array_values(array_slice($suggested, 0, 8)),
         'form_enabled' => $form_enabled,
         'form_schema'  => $form_enabled ? array(
             'title'           => askwp_get_option('form_title', 'Contact Form'),
@@ -231,6 +281,24 @@ function askwp_enqueue_widget_assets()
             'open_form'    => askwp_get_option('form_trigger_label', 'Open Form'),
             'loading'      => 'Loading response...',
             'error'        => 'The chat is currently unavailable. Please try again later.',
+            'error_offline' => 'You appear to be offline. Please reconnect and retry.',
+            'error_network' => 'We could not reach the server. Please try again.',
+            'error_server' => 'The assistant is temporarily unavailable. Please retry.',
+            'retry'        => 'Retry',
+            'retry_unavailable' => 'Retry is no longer available for that message.',
+            'connection_online' => 'Online',
+            'connection_connecting' => 'Connecting',
+            'connection_offline' => 'Offline',
+            'connection_issue' => 'Issue detected',
+            'assistant_message' => 'Assistant message',
+            'user_message' => 'Your message',
+            'image_attached' => 'Image attached',
+            'attach_image' => 'Attach image',
+            'remove_image' => 'Remove image',
+            'image_too_large' => 'Image is too large. Max size is 2MB.',
+            'image_invalid' => 'Only PNG, JPEG, WEBP, and GIF images are supported.',
+            'copy_message' => 'Copy message',
+            'copied'       => 'Copied',
             'reset'        => 'Reset',
             'close'        => 'Close',
         ),

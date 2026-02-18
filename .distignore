@@ -1,0 +1,8 @@
+.git
+.gitignore
+.claude
+.distignore
+CLAUDE.md
+AGENTS.md
+docs/
+output/
