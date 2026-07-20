@@ -817,6 +817,7 @@
     if (state.panelOpen) { return; }
     state.panelOpen = true;
 
+    ui.root.classList.remove('askwp-closing');
     ui.root.classList.add('askwp-open');
     updateMobileState(true);
     renderChatList();
@@ -838,8 +839,26 @@
       closeFormOverlay(true);
     }
 
-    ui.root.classList.remove('askwp-open');
-    updateMobileState(false);
+    if (prefersReducedMotion()) {
+      ui.root.classList.remove('askwp-open');
+      updateMobileState(false);
+      return;
+    }
+
+    // Exit softly: play the out animation, then actually hide the panel.
+    ui.root.classList.add('askwp-closing');
+    var finished = false;
+    var finishClose = function () {
+      if (finished) { return; }
+      finished = true;
+      ui.root.classList.remove('askwp-closing');
+      if (!state.panelOpen) {
+        ui.root.classList.remove('askwp-open');
+        updateMobileState(false);
+      }
+    };
+    ui.panel.addEventListener('animationend', finishClose, { once: true });
+    window.setTimeout(finishClose, 320);
   }
 
   function updateMobileState(open) {
@@ -863,6 +882,10 @@
     renderConnectionState();
     renderModeVisibility();
   }
+
+  // How many messages have already been shown; only indexes beyond this get
+  // the entrance animation, so re-renders and restored history stay still.
+  var renderedMsgCount = 0;
 
   function renderChatList() {
     ui.chatList.innerHTML = '';
@@ -902,9 +925,12 @@
       }
     }
 
-    state.messages.forEach(function (msg) {
+    state.messages.forEach(function (msg, msgIndex) {
       var el = document.createElement('div');
       el.className = 'askwp-msg askwp-msg-' + msg.role;
+      if (msgIndex >= renderedMsgCount) {
+        el.classList.add('askwp-msg-new');
+      }
       if (msg.role === 'assistant' && msg.isError) {
         el.classList.add('askwp-msg-error');
       }
@@ -987,6 +1013,8 @@
       el.appendChild(body);
       ui.chatList.appendChild(el);
     });
+
+    renderedMsgCount = state.messages.length;
 
     if (state.waiting) {
       var typing = document.createElement('div');
@@ -1214,6 +1242,9 @@
 
     ui.connection.className = 'askwp-connection askwp-conn-' + mode;
     ui.connectionLabel.textContent = label;
+    // The pill only appears when something is worth reporting; "online" is the
+    // quiet default and shows nothing.
+    ui.connection.hidden = (mode === 'online');
   }
 
   function setConnectionState(mode) {
@@ -1558,7 +1589,7 @@
 
       // Create streaming bubble directly in the DOM (not in state).
       var streamBubble = document.createElement('div');
-      streamBubble.className = 'askwp-msg askwp-msg-assistant';
+      streamBubble.className = 'askwp-msg askwp-msg-assistant askwp-msg-new';
       streamBubble.tabIndex = 0;
       streamBubble.setAttribute('role', 'article');
       streamBubble.setAttribute('aria-label', str.assistant_message || 'Assistant message');
@@ -1889,6 +1920,9 @@
           streamBubble.classList.add('askwp-msg-error');
         }
         state.messages.push(streamMsg);
+        // The bubble is already visible in the DOM — don't re-animate it on the
+        // next full render.
+        renderedMsgCount = state.messages.length;
         persistMessages();
 
         streamAnswerWrap.innerHTML = renderAssistantMarkdown(content);
@@ -2556,6 +2590,7 @@
 
     var connection = document.createElement('span');
     connection.className = 'askwp-connection askwp-conn-online';
+    connection.hidden = true;
     connection.setAttribute('role', 'status');
     connection.setAttribute('aria-live', 'polite');
 

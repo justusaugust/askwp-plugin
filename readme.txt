@@ -3,7 +3,7 @@ Contributors: askwp
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.3.5
+Stable tag: 2.3.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ OpenAI (default), Anthropic (Claude), OpenRouter, and Ollama (local/self-hosted)
 No. Form submissions are only sent to /submit_form and emailed via wp_mail.
 
 == Changelog ==
+= 2.3.6 =
+* UI/UX polish: connection pill now only appears when something needs attention (Connecting/Working/Offline/Issue) — no permanent "Online" badge.
+* Soft close animation for the panel (desktop fade-out, mobile sheet slide-down) and animated launcher cross-fade.
+* Press feedback (scale) on all buttons; message entrance animation no longer replays on restored history or re-renders.
+* Typography: fixed pixel sizing so the widget renders identically on themes that rescale the root font size; 12px minimum text size; form fields no longer trigger iOS zoom.
+
 = 2.3.5 =
 * Fix: OpenAI models that reject the temperature parameter (e.g. gpt-5.x reasoning tiers) no longer fail — the request is retried without it, in both streaming and non-streaming paths.
 

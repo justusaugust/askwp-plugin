@@ -11,17 +11,28 @@
 
 .askwp-widget {
   --askwp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --askwp-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --askwp-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --askwp-micro: 0.18s;
-  --askwp-panel-duration: 0.32s;
+  --askwp-panel-duration: 0.28s;
+  --askwp-panel-exit: 0.2s;
 
   position: fixed;
   right: 18px;
   bottom: 18px;
   z-index: var(--askwp-widget-zindex, 999999);
   font-family: var(--askwp-font-family, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  /* Fixed base so the widget renders identically on themes that rescale the root font size. */
+  font-size: 16px;
   color: var(--askwp-color-text, #1f2937);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
+}
+
+.askwp-widget button {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .askwp-widget.askwp-pos-left {
@@ -44,8 +55,10 @@
   padding: 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   transition:
-    transform var(--askwp-micro) ease,
-    box-shadow var(--askwp-micro) ease;
+    transform var(--askwp-micro) var(--askwp-ease-out),
+    box-shadow var(--askwp-micro) var(--askwp-ease-out),
+    opacity var(--askwp-micro) var(--askwp-ease-out),
+    filter var(--askwp-micro) var(--askwp-ease-out);
   appearance: none;
   -webkit-appearance: none;
 }
@@ -53,6 +66,10 @@
 .askwp-launcher:hover {
   transform: scale(1.06);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+}
+
+.askwp-launcher:active {
+  transform: scale(0.96);
 }
 
 .askwp-launcher:focus-visible {
@@ -80,7 +97,16 @@
 }
 
 .askwp-widget.askwp-open .askwp-launcher {
-  display: none;
+  opacity: 0;
+  transform: scale(0.25);
+  filter: blur(4px);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform var(--askwp-micro) var(--askwp-ease-out),
+    opacity var(--askwp-micro) var(--askwp-ease-out),
+    filter var(--askwp-micro) var(--askwp-ease-out),
+    visibility 0s var(--askwp-micro);
 }
 
 /* ── Backdrop (mobile) ── */
@@ -129,7 +155,16 @@
 
 .askwp-widget.askwp-open .askwp-panel {
   display: flex;
+  transform-origin: bottom right;
   animation: askwp-panel-in var(--askwp-panel-duration) var(--askwp-ease);
+}
+
+.askwp-widget.askwp-pos-left.askwp-open .askwp-panel {
+  transform-origin: bottom left;
+}
+
+.askwp-widget.askwp-open.askwp-closing .askwp-panel {
+  animation: askwp-panel-out var(--askwp-panel-exit) var(--askwp-ease-in) forwards;
 }
 
 @keyframes askwp-panel-in {
@@ -140,6 +175,17 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes askwp-panel-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
   }
 }
 
@@ -165,7 +211,7 @@
 }
 
 .askwp-panel-title {
-  font-size: 0.95rem;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -176,7 +222,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.68rem;
+  font-size: 12px;
   line-height: 1;
   font-weight: 650;
   letter-spacing: 0.01em;
@@ -184,6 +230,18 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.9);
+  animation: askwp-conn-in var(--askwp-micro) var(--askwp-ease-out);
+}
+
+@keyframes askwp-conn-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .askwp-connection-dot {
@@ -220,16 +278,22 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.15);
   color: #fff;
-  font-size: 1.1rem;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background var(--askwp-micro) ease;
+  transition:
+    background var(--askwp-micro) var(--askwp-ease-out),
+    transform var(--askwp-micro) var(--askwp-ease-out);
 }
 
 .askwp-panel-close:hover {
   background: rgba(255, 255, 255, 0.25);
+}
+
+.askwp-panel-close:active {
+  transform: scale(0.96);
 }
 
 .askwp-panel-close:focus-visible {
@@ -258,9 +322,14 @@
   max-width: 85%;
   padding: 10px 14px;
   border-radius: 14px;
-  font-size: 0.9rem;
+  font-size: 14px;
   line-height: 1.5;
   word-break: break-word;
+  text-wrap: pretty;
+}
+
+/* Only freshly added messages animate — restored history renders statically. */
+.askwp-msg.askwp-msg-new {
   animation: askwp-msg-in 0.25s var(--askwp-ease);
 }
 
@@ -327,9 +396,10 @@
 
 .askwp-msg-time {
   margin-top: 6px;
-  font-size: 0.68rem;
+  font-size: 12px;
   line-height: 1.2;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   opacity: 0.82;
 }
 
@@ -412,7 +482,7 @@
   background: #fff5f5;
   color: #b42318;
   font-family: inherit;
-  font-size: 0.72rem;
+  font-size: 12px;
   font-weight: 650;
   line-height: 1.2;
   padding: 4px 10px;
@@ -476,12 +546,12 @@
   font-weight: 700;
 }
 
-.askwp-msg h1 { font-size: 1.06rem; }
-.askwp-msg h2 { font-size: 1.01rem; }
-.askwp-msg h3 { font-size: 0.97rem; }
-.askwp-msg h4 { font-size: 0.93rem; }
-.askwp-msg h5 { font-size: 0.9rem; }
-.askwp-msg h6 { font-size: 0.86rem; }
+.askwp-msg h1 { font-size: 17px; }
+.askwp-msg h2 { font-size: 16px; }
+.askwp-msg h3 { font-size: 15px; }
+.askwp-msg h4 { font-size: 15px; }
+.askwp-msg h5 { font-size: 14px; }
+.askwp-msg h6 { font-size: 14px; }
 
 .askwp-msg h1:first-child,
 .askwp-msg h2:first-child,
@@ -515,7 +585,7 @@
   width: 100%;
   min-width: 240px;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: 13px;
 }
 
 .askwp-msg th,
@@ -590,7 +660,7 @@
   background: #f9fafb;
   color: var(--askwp-color-text, #1f2937);
   text-decoration: none;
-  font-size: 0.72rem;
+  font-size: 12px;
   font-weight: 600;
   transition:
     background var(--askwp-micro) ease,
@@ -617,14 +687,19 @@
   background: #fff;
   color: var(--askwp-color-text, #1f2937);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 500;
   padding: 6px 14px;
   cursor: pointer;
   transition:
-    background var(--askwp-micro) ease,
-    border-color var(--askwp-micro) ease,
-    color var(--askwp-micro) ease;
+    background var(--askwp-micro) var(--askwp-ease-out),
+    border-color var(--askwp-micro) var(--askwp-ease-out),
+    color var(--askwp-micro) var(--askwp-ease-out),
+    transform var(--askwp-micro) var(--askwp-ease-out);
+}
+
+.askwp-sq-btn:active {
+  transform: scale(0.96);
 }
 
 .askwp-sq-btn:hover {
@@ -646,7 +721,7 @@
   display: grid;
   gap: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 0.72rem;
+  font-size: 12px;
   line-height: 1.3;
   color: #6b7280;
 }
@@ -702,6 +777,7 @@
   align-self: flex-start;
   background: #f3f4f6;
   border-radius: 14px 14px 14px 4px;
+  animation: askwp-msg-in 0.25s var(--askwp-ease);
 }
 
 .askwp-typing span {
@@ -765,7 +841,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.75rem;
+  font-size: 12px;
   color: #374151;
   font-weight: 600;
 }
@@ -777,7 +853,7 @@
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.06);
   color: #374151;
-  font-size: 1rem;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
   transition: transform var(--askwp-micro) ease, background var(--askwp-micro) ease;
@@ -817,7 +893,7 @@
   padding: 2px 0;
   overflow-x: hidden;
   overflow-y: auto;
-  font-size: 0.9rem;
+  font-size: 14px;
   line-height: 1.4;
   color: var(--askwp-color-text, #1f2937);
   background: transparent;
@@ -856,6 +932,10 @@
   transform: scale(1.08);
   background: var(--askwp-color-primary, #2563eb);
   color: #fff;
+}
+
+.askwp-attach:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .askwp-attach.askwp-attach-active {
@@ -911,6 +991,10 @@
   transform: scale(1.08);
 }
 
+.askwp-send:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
 .askwp-send:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -929,13 +1013,18 @@
   border-radius: 6px;
   background: #fff;
   color: var(--askwp-color-text, #1f2937);
-  font-size: 0.74rem;
+  font-size: 12px;
   font-weight: 600;
   padding: 5px 10px;
   cursor: pointer;
   transition:
-    background var(--askwp-micro) ease,
-    border-color var(--askwp-micro) ease;
+    background var(--askwp-micro) var(--askwp-ease-out),
+    border-color var(--askwp-micro) var(--askwp-ease-out),
+    transform var(--askwp-micro) var(--askwp-ease-out);
+}
+
+.askwp-action-btn:active {
+  transform: scale(0.96);
 }
 
 .askwp-action-btn:hover {
@@ -972,7 +1061,7 @@
 }
 
 .askwp-form-title {
-  font-size: 1.05rem;
+  font-size: 17px;
   font-weight: 700;
   color: var(--askwp-color-secondary, #1e293b);
 }
@@ -984,7 +1073,7 @@
   border-radius: 50%;
   background: #fff;
   color: var(--askwp-color-text, #1f2937);
-  font-size: 1.15rem;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   display: grid;
@@ -1016,7 +1105,7 @@
 }
 
 .askwp-field > label {
-  font-size: 0.78rem;
+  font-size: 13px;
   font-weight: 600;
   color: #4b5563;
 }
@@ -1030,7 +1119,7 @@
   background: #fff;
   color: var(--askwp-color-text, #1f2937);
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 14px;
   line-height: 1.4;
   padding: 8px 10px;
 }
@@ -1052,7 +1141,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.86rem;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
 }
@@ -1077,12 +1166,17 @@
   border: 1px solid transparent;
   padding: 9px 14px;
   font-family: inherit;
-  font-size: 0.86rem;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition:
-    background var(--askwp-micro) ease,
-    color var(--askwp-micro) ease;
+    background var(--askwp-micro) var(--askwp-ease-out),
+    color var(--askwp-micro) var(--askwp-ease-out),
+    transform var(--askwp-micro) var(--askwp-ease-out);
+}
+
+.askwp-form-nav button:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .askwp-form-prev {
@@ -1118,7 +1212,7 @@
   min-height: 0;
   border-radius: 8px;
   padding: 0;
-  font-size: 0.8rem;
+  font-size: 13px;
   line-height: 1.4;
   font-weight: 550;
 }
@@ -1496,6 +1590,10 @@
     animation: askwp-sheet-up var(--askwp-panel-duration) var(--askwp-ease);
   }
 
+  .askwp-widget.askwp-open.askwp-closing .askwp-panel {
+    animation: askwp-sheet-down 0.24s var(--askwp-ease-in) forwards;
+  }
+
   @keyframes askwp-sheet-up {
     from {
       transform: translateY(100%);
@@ -1505,7 +1603,19 @@
     }
   }
 
-  .askwp-input {
+  @keyframes askwp-sheet-down {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  .askwp-input,
+  .askwp-field input,
+  .askwp-field select,
+  .askwp-field textarea {
     font-size: 16px; /* prevent iOS zoom on focus */
   }
 }
@@ -1556,11 +1666,14 @@
 @media (prefers-reduced-motion: reduce) {
   .askwp-widget {
     --askwp-panel-duration: 0.01s;
+    --askwp-panel-exit: 0.01s;
     --askwp-micro: 0.01s;
   }
 
+  .askwp-typing,
   .askwp-typing span,
   .askwp-stream-step-active::before,
+  .askwp-connection,
   .askwp-msg {
     animation: none !important;
   }
