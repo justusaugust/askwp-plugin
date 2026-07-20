@@ -56,9 +56,7 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   transition:
     transform var(--askwp-micro) var(--askwp-ease-out),
-    box-shadow var(--askwp-micro) var(--askwp-ease-out),
-    opacity var(--askwp-micro) var(--askwp-ease-out),
-    filter var(--askwp-micro) var(--askwp-ease-out);
+    box-shadow var(--askwp-micro) var(--askwp-ease-out);
   appearance: none;
   -webkit-appearance: none;
 }
@@ -96,18 +94,8 @@
   border-radius: 50%;
 }
 
-.askwp-widget.askwp-open .askwp-launcher {
-  opacity: 0;
-  transform: scale(0.25);
-  filter: blur(4px);
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    transform var(--askwp-micro) var(--askwp-ease-out),
-    opacity var(--askwp-micro) var(--askwp-ease-out),
-    filter var(--askwp-micro) var(--askwp-ease-out),
-    visibility 0s var(--askwp-micro);
-}
+/* The launcher stays visible while the panel is open (the panel floats 12px
+   above it) and acts as the close toggle. On mobile the bottom sheet covers it. */
 
 /* ── Backdrop (mobile) ── */
 

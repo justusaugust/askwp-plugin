@@ -819,6 +819,7 @@
 
     ui.root.classList.remove('askwp-closing');
     ui.root.classList.add('askwp-open');
+    ui.launcher.setAttribute('aria-expanded', 'true');
     updateMobileState(true);
     renderChatList();
 
@@ -834,6 +835,7 @@
     if (!state.panelOpen) { return; }
 
     state.panelOpen = false;
+    ui.launcher.setAttribute('aria-expanded', 'false');
 
     if (state.formOpen) {
       closeFormOverlay(true);
@@ -2553,6 +2555,7 @@
     launcher.type = 'button';
     launcher.className = 'askwp-launcher';
     launcher.setAttribute('aria-label', str.toggle_label || cfg.bot_name || 'Chat');
+    launcher.setAttribute('aria-expanded', 'false');
 
     if (cfg.chat_icon === 'custom' && cfg.chat_icon_custom_url) {
       var customImg = document.createElement('img');

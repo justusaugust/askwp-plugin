@@ -3,7 +3,7 @@ Contributors: askwp
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.3.6
+Stable tag: 2.3.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,9 @@ OpenAI (default), Anthropic (Claude), OpenRouter, and Ollama (local/self-hosted)
 No. Form submissions are only sent to /submit_form and emailed via wp_mail.
 
 == Changelog ==
+= 2.3.7 =
+* The launcher button stays visible below the open panel and toggles the chat closed; aria-expanded now reflects the panel state.
+
 = 2.3.6 =
 * UI/UX polish: connection pill now only appears when something needs attention (Connecting/Working/Offline/Issue) — no permanent "Online" badge.
 * Soft close animation for the panel (desktop fade-out, mobile sheet slide-down) and animated launcher cross-fade.
