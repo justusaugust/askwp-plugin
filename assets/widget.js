@@ -1197,7 +1197,7 @@
   function renderConnectionState() {
     if (!ui || !ui.connection || !ui.connectionLabel) { return; }
     var mode = String(state.connection || 'online');
-    if (mode !== 'offline' && mode !== 'connecting' && mode !== 'issue') {
+    if (mode !== 'offline' && mode !== 'connecting' && mode !== 'working' && mode !== 'issue') {
       mode = 'online';
     }
 
@@ -1206,6 +1206,8 @@
       label = str.connection_offline || 'Offline';
     } else if (mode === 'connecting') {
       label = str.connection_connecting || 'Connecting';
+    } else if (mode === 'working') {
+      label = str.connection_working || 'Working';
     } else if (mode === 'issue') {
       label = str.connection_issue || 'Issue detected';
     }
@@ -1216,7 +1218,7 @@
 
   function setConnectionState(mode) {
     var next = String(mode || 'online');
-    if (next !== 'offline' && next !== 'connecting' && next !== 'issue') {
+    if (next !== 'offline' && next !== 'connecting' && next !== 'working' && next !== 'issue') {
       next = 'online';
     }
     if (state.connection === next) { return; }
@@ -1399,7 +1401,7 @@
     return res.json();
   }
 
-  async function postChatStream(payload, onDelta, onDone, onStatus, onError) {
+  async function postChatStream(payload, onDelta, onDone, onStatus, onError, onOpen) {
     var res;
     try {
       res = await fetch(cfg.stream_url, {
@@ -1416,6 +1418,10 @@
     if (!res.ok || !res.body) {
       onError(new Error('stream_http_' + (res.status || 0)));
       return;
+    }
+
+    if (typeof onOpen === 'function') {
+      onOpen();
     }
 
     var reader = res.body.getReader();
@@ -1937,6 +1943,9 @@
         await postChatStream(
           payload,
           function onDelta(text) {
+            if (state.connection === 'connecting') {
+              setConnectionState('working');
+            }
             if (!streamOutputStarted) {
               streamOutputStarted = true;
             }
@@ -1958,6 +1967,9 @@
             if (!revealTimer) { finishStream(); }
           },
           function onStatus(statusText) {
+            if (state.connection === 'connecting') {
+              setConnectionState('working');
+            }
             if (streamStepsEnabled) {
               pushProgressSteps([statusText]);
             }
@@ -1979,6 +1991,9 @@
               streamDoneData = { sources: [], usage: null };
             }
             if (!revealTimer) { finishStream(); }
+          },
+          function onOpen() {
+            setConnectionState('working');
           }
         );
       } catch (e) {
@@ -2002,6 +2017,7 @@
     } else {
       // Non-streaming fallback.
       setWaiting(true);
+      setConnectionState('working');
       try {
         var data = await postChat(payload);
         var reply = sanitizeAssistantText(data && data.reply ? data.reply : '', 2500);

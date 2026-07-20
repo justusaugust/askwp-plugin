@@ -201,6 +201,10 @@
   color: #fcd34d;
 }
 
+.askwp-conn-working {
+  color: #93c5fd;
+}
+
 .askwp-conn-offline {
   color: #fca5a5;
 }
@@ -1172,6 +1176,10 @@
 
 .askwp-widget.askwp-theme-dark .askwp-conn-connecting {
   color: #facc15 !important;
+}
+
+.askwp-widget.askwp-theme-dark .askwp-conn-working {
+  color: #93c5fd !important;
 }
 
 .askwp-widget.askwp-theme-dark .askwp-conn-offline {

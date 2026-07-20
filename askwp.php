@@ -3,7 +3,7 @@
  * Plugin Name: AskWP
  * Plugin URI: https://askwp.dev
  * Description: White-label floating chat widget with RAG, multi-provider LLM support, and configurable contact form.
- * Version: 2.3.3
+ * Version: 2.3.4
  * Author: Justus August
  * Author URI: https://askwp.dev
  * License: GPLv2 or later
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('ASKWP_PLUGIN_VERSION', '2.3.3');
+define('ASKWP_PLUGIN_VERSION', '2.3.4');
 define('ASKWP_PLUGIN_FILE', __FILE__);
 define('ASKWP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ASKWP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -288,6 +288,7 @@ function askwp_enqueue_widget_assets()
             'retry_unavailable' => 'Retry is no longer available for that message.',
             'connection_online' => 'Online',
             'connection_connecting' => 'Connecting',
+            'connection_working' => 'Working',
             'connection_offline' => 'Offline',
             'connection_issue' => 'Issue detected',
             'assistant_message' => 'Assistant message',
