@@ -6,6 +6,22 @@ if (!defined('ABSPATH')) {
 
 class ASKWP_LLM_OpenAI extends ASKWP_LLM_Provider
 {
+    /** True once the API has rejected the temperature parameter for this model. */
+    private $temperature_unsupported = false;
+
+    private function is_temperature_rejection(string $body): bool
+    {
+        $decoded = json_decode($body, true);
+        if (!is_array($decoded) || !isset($decoded['error'])) {
+            return false;
+        }
+        $param = isset($decoded['error']['param']) ? (string) $decoded['error']['param'] : '';
+        $message = isset($decoded['error']['message']) ? (string) $decoded['error']['message'] : '';
+
+        return $param === 'temperature'
+            || (stripos($message, 'temperature') !== false && stripos($message, 'not supported') !== false);
+    }
+
     public function get_name(): string
     {
         return 'openai';
@@ -58,6 +74,9 @@ class ASKWP_LLM_OpenAI extends ASKWP_LLM_Provider
                 'temperature'      => $temperature,
                 'input'            => $input,
             );
+            if ($this->temperature_unsupported) {
+                unset($payload['temperature']);
+            }
 
             if (!empty($tools)) {
                 $payload['tools'] = $tools;
@@ -80,6 +99,31 @@ class ASKWP_LLM_OpenAI extends ASKWP_LLM_Provider
             }
 
             $status = (int) wp_remote_retrieve_response_code($response);
+
+            // Some models (e.g. gpt-5.x reasoning tiers) reject the temperature
+            // parameter entirely; drop it and retry once when the API says so.
+            if (($status < 200 || $status >= 300)
+                && isset($payload['temperature'])
+                && $this->is_temperature_rejection(wp_remote_retrieve_body($response))
+            ) {
+                $this->temperature_unsupported = true;
+                unset($payload['temperature']);
+
+                $response = wp_remote_post('https://api.openai.com/v1/responses', array(
+                    'timeout' => 30,
+                    'headers' => array(
+                        'Authorization' => 'Bearer ' . $api_key,
+                        'Content-Type'  => 'application/json',
+                    ),
+                    'body' => wp_json_encode($payload),
+                ));
+
+                if (is_wp_error($response)) {
+                    return new WP_Error('askwp_openai_transport', 'Transport error during OpenAI request.');
+                }
+
+                $status = (int) wp_remote_retrieve_response_code($response);
+            }
             if ($status < 200 || $status >= 300) {
                 if (defined('WP_DEBUG') && WP_DEBUG) {
                     // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -175,6 +219,9 @@ class ASKWP_LLM_OpenAI extends ASKWP_LLM_Provider
             'input'            => $input,
             'stream'           => true,
         );
+        if ($this->temperature_unsupported) {
+            unset($payload['temperature']);
+        }
 
         if (!empty($tools)) {
             $payload['tools'] = $tools;
@@ -263,6 +310,28 @@ class ASKWP_LLM_OpenAI extends ASKWP_LLM_Provider
             $payload,
             $write_callback
         );
+
+        // Some models reject the temperature parameter entirely; drop it and
+        // retry once. The error body is not SSE, so no deltas were emitted, but
+        // it did pass through the write callback — reset the parse buffer.
+        if (is_wp_error($result)
+            && isset($payload['temperature'])
+            && $this->is_temperature_rejection($this->last_stream_error_body)
+        ) {
+            $this->temperature_unsupported = true;
+            unset($payload['temperature']);
+            $buffer = '';
+
+            $result = $this->stream_request(
+                'https://api.openai.com/v1/responses',
+                array(
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type'  => 'application/json',
+                ),
+                $payload,
+                $write_callback
+            );
+        }
 
         if (is_wp_error($result)) {
             return new WP_Error('askwp_openai_transport', $result->get_error_message());

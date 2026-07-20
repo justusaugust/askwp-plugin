@@ -10,6 +10,9 @@ abstract class ASKWP_LLM_Provider
     private $_stream_target_url = null;
     private $_stream_raw_data = '';
 
+    /** Raw response body of the last failed stream_request, for error inspection. */
+    protected $last_stream_error_body = '';
+
     /**
      * Send a chat completion request.
      *
@@ -93,10 +96,12 @@ abstract class ASKWP_LLM_Provider
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log('AskWP stream_request HTTP ' . $status . ' body: ' . substr($this->_stream_raw_data, 0, 2000));
             }
+            $this->last_stream_error_body = $this->_stream_raw_data;
             $this->_stream_raw_data = '';
             return new WP_Error('askwp_stream_http_' . $status, 'API error (HTTP ' . $status . ').');
         }
 
+        $this->last_stream_error_body = '';
         $this->_stream_raw_data = '';
         return true;
     }

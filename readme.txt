@@ -3,7 +3,7 @@ Contributors: askwp
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.3.4
+Stable tag: 2.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,9 @@ OpenAI (default), Anthropic (Claude), OpenRouter, and Ollama (local/self-hosted)
 No. Form submissions are only sent to /submit_form and emailed via wp_mail.
 
 == Changelog ==
+= 2.3.5 =
+* Fix: OpenAI models that reject the temperature parameter (e.g. gpt-5.x reasoning tiers) no longer fail — the request is retried without it, in both streaming and non-streaming paths.
+
 = 2.3.4 =
 * Add "Working" connection state to the widget status indicator while a response is being generated.
 
