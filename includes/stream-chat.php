@@ -360,8 +360,7 @@ function askwp_stream_chat_handler()
     header('Content-Type: text/event-stream; charset=UTF-8');
     header('Cache-Control: no-cache, no-store');
     header('X-Accel-Buffering: no');
-    header('Connection: keep-alive');
-    header('Transfer-Encoding: chunked');
+    // Apache/Nginx owns HTTP framing; declaring chunked here leaves the SSE body unframed.
     header_remove('Content-Length');
 
     // Clear ALL output buffers.
