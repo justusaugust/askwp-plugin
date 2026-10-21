@@ -540,7 +540,7 @@ function askwp_render_tab_llm()
                 <input type="number" id="askwp_max_output_tokens" name="askwp_max_output_tokens" value="<?php echo esc_attr($max_tokens); ?>" min="120" max="4000" step="10" />
             </td>
         </tr>
-        <tr>
+        <tr class="askwp-provider-field askwp-provider-openai askwp-provider-openrouter askwp-provider-ollama">
             <th><label for="askwp_temperature">Temperature</label></th>
             <td>
                 <input type="number" id="askwp_temperature" name="askwp_temperature" value="<?php echo esc_attr($temperature); ?>" min="0" max="2" step="0.1" />
