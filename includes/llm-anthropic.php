@@ -36,7 +36,7 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
         $max_tokens = isset($options['max_output_tokens']) ? (int) $options['max_output_tokens'] : 500;
         $max_tokens = max(120, min(4000, $max_tokens));
 
-        $temperature = isset($options['temperature']) ? (float) $options['temperature'] : 0.7;
+        // API version 2026-10-21 rejects temperature/top_p/top_k; the option is not sent.
 
         $tools = isset($options['tools']) && is_array($options['tools']) ? $options['tools'] : array();
         $tool_handler = isset($options['tool_handler']) && is_callable($options['tool_handler']) ? $options['tool_handler'] : null;
@@ -55,7 +55,6 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
             $payload = array(
                 'model'      => $model,
                 'max_tokens' => $max_tokens,
-                'temperature' => $temperature,
                 'messages'   => $anthropic_messages,
             );
 
@@ -71,7 +70,7 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
                 'timeout' => 60,
                 'headers' => array(
                     'x-api-key'         => $api_key,
-                    'anthropic-version'  => '2023-06-01',
+                    'anthropic-version'  => '2026-10-21',
                     'Content-Type'       => 'application/json',
                 ),
                 'body' => wp_json_encode($payload),
@@ -173,7 +172,6 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
 
         $max_tokens = isset($options['max_output_tokens']) ? (int) $options['max_output_tokens'] : 500;
         $max_tokens = max(120, min(4000, $max_tokens));
-        $temperature = isset($options['temperature']) ? (float) $options['temperature'] : 0.7;
 
         $tools = isset($options['tools']) && is_array($options['tools']) ? $options['tools'] : array();
 
@@ -187,7 +185,6 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
         $payload = array(
             'model'       => $model,
             'max_tokens'  => $max_tokens,
-            'temperature' => $temperature,
             'messages'    => $anthropic_messages,
             'stream'      => true,
         );
@@ -287,7 +284,7 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
             'https://api.anthropic.com/v1/messages',
             array(
                 'x-api-key'         => $api_key,
-                'anthropic-version'  => '2023-06-01',
+                'anthropic-version'  => '2026-10-21',
                 'Content-Type'       => 'application/json',
             ),
             $payload,
