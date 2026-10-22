@@ -531,7 +531,7 @@ function askwp_render_tab_llm()
             <th><label for="askwp_model">Model</label></th>
             <td>
                 <input type="text" id="askwp_model" name="askwp_model" value="<?php echo esc_attr($model); ?>" class="regular-text" />
-                <p class="description">e.g. <code>gpt-5</code>, <code>claude-sonnet-4-5-20250929</code>, <code>openai/gpt-5</code>, <code>llama3</code></p>
+                <p class="description">e.g. <code>gpt-5</code>, <code>claude-haiku-5-5</code>, <code>openai/gpt-5</code>, <code>llama3</code></p>
             </td>
         </tr>
         <tr>
@@ -854,8 +854,13 @@ function askwp_token_pricing_table()
         'gpt-4.1-mini'                 => array('input' => 0.40,  'output' => 1.60),
         'gpt-4.1-nano'                 => array('input' => 0.10,  'output' => 0.40),
         'gpt-5'                        => array('input' => 2.00, 'output' => 8.00),
+        'claude-opus-5-5'              => array('input' => 4.00,  'output' => 20.00),
+        'claude-sonnet-5-5'            => array('input' => 2.00,  'output' => 10.00),
+        'claude-haiku-5-5'             => array('input' => 0.10,  'output' => 0.50),
+        'claude-haiku-4-5'             => array('input' => 1.00,  'output' => 5.00),
+        'claude-sonnet-4-5'            => array('input' => 3.00,  'output' => 15.00),
         'claude-sonnet-4-5-20250929'   => array('input' => 3.00,  'output' => 15.00),
-        'claude-haiku-3-5-20241022'    => array('input' => 0.80,  'output' => 4.00),
+        'claude-3-5-haiku-20241022'    => array('input' => 0.80,  'output' => 4.00),
         'claude-3-haiku-20240307'      => array('input' => 0.25,  'output' => 1.25),
     );
 }
