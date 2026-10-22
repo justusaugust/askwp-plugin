@@ -6,6 +6,8 @@ if (!defined('ABSPATH')) {
 
 class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
 {
+    const DEFAULT_MODEL = 'claude-haiku-5-5';
+
     public function get_name(): string
     {
         return 'anthropic';
@@ -28,9 +30,9 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
             return new WP_Error('askwp_anthropic_missing_key', 'Anthropic API key is not configured.');
         }
 
-        $model = trim((string) askwp_get_option('model', 'claude-sonnet-4-5-20250929'));
+        $model = trim((string) askwp_get_option('model', self::DEFAULT_MODEL));
         if ($model === '') {
-            $model = 'claude-sonnet-4-5-20250929';
+            $model = self::DEFAULT_MODEL;
         }
 
         $max_tokens = isset($options['max_output_tokens']) ? (int) $options['max_output_tokens'] : 500;
@@ -57,6 +59,7 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
                 'max_tokens' => $max_tokens,
                 'messages'   => $anthropic_messages,
             );
+            $payload = $this->apply_thinking($payload, $model);
 
             if ($system_prompt !== '') {
                 $payload['system'] = $system_prompt;
@@ -165,9 +168,9 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
             return new WP_Error('askwp_anthropic_missing_key', 'Anthropic API key is not configured.');
         }
 
-        $model = trim((string) askwp_get_option('model', 'claude-sonnet-4-5-20250929'));
+        $model = trim((string) askwp_get_option('model', self::DEFAULT_MODEL));
         if ($model === '') {
-            $model = 'claude-sonnet-4-5-20250929';
+            $model = self::DEFAULT_MODEL;
         }
 
         $max_tokens = isset($options['max_output_tokens']) ? (int) $options['max_output_tokens'] : 500;
@@ -188,6 +191,7 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
             'messages'    => $anthropic_messages,
             'stream'      => true,
         );
+        $payload = $this->apply_thinking($payload, $model);
 
         if ($system_prompt !== '') {
             $payload['system'] = $system_prompt;
@@ -425,5 +429,18 @@ class ASKWP_LLM_Anthropic extends ASKWP_LLM_Provider
         }
 
         return $anthropic_tools;
+    }
+
+    /**
+     * Claude Haiku 5.x thinks by default, and thinking counts toward max_tokens,
+     * which is sized here for short chat replies. Turn it off for those models.
+     */
+    private function apply_thinking(array $payload, string $model): array
+    {
+        if (strpos($model, 'claude-haiku-5') === 0) {
+            $payload['thinking'] = array('type' => 'disabled');
+        }
+
+        return $payload;
     }
 }

@@ -3,7 +3,7 @@ Contributors: askwp
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.3.7
+Stable tag: 2.3.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ OpenAI (default), Anthropic (Claude), OpenRouter, and Ollama (local/self-hosted)
 No. Form submissions are only sent to /submit_form and emailed via wp_mail.
 
 == Changelog ==
+= 2.3.8 =
+* Anthropic: moved to API version 2026-10-21. The temperature setting is no longer sent to Anthropic (the API now rejects it) and is hidden for that provider.
+* Anthropic: default model is now claude-haiku-5-5, with thinking turned off for Haiku 5.x so short replies are not cut off. Sites that chose a model keep it.
+* Usage dashboard: prices for current Claude models (Opus 5.5, Sonnet 5.5, Haiku 5.5, Haiku 4.5).
+* Fix: streamed replies behind Apache/Nginx arrive intact; the plugin no longer sets its own chunked transfer encoding.
+
 = 2.3.7 =
 * The launcher button stays visible below the open panel and toggles the chat closed; aria-expanded now reflects the panel state.
 
